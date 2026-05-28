@@ -30,6 +30,19 @@ datamart-residuos/
 │   ├── extract.py             # Carga y normaliza archivos raw
 │   ├── transform.py           # Construye dimensiones y tablas de hechos
 │   └── load.py                # Carga a DuckDB y genera reporte de calidad
+├── reportes/                       # Generado automáticamente al correr el pipeline
+│   ├── 01_evolucion_nacional.png
+│   ├── 01_evolucion_toneladas.png
+│   ├── 02_top10_organico.png
+│   ├── 02_top10_inorganico.png
+│   ├── 03_region_natural.png
+│   ├── 04_ranking_departamentos.png
+│   ├── 05_mejora_organico.png
+│   ├── 05_mejora_inorganico.png
+│   ├── 06_per_capita.png
+│   ├── 07_sin_valorizacion.png
+│   ├── 08_tipo_municipalidad.png
+│   └── *.txt                       # Versión en texto de cada reporte
 ├── tests/
 │   └── test_marts.py          # Pruebas de integridad referencial y calidad
 ├── docs/
