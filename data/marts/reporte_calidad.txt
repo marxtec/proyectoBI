@@ -1,5 +1,5 @@
 # Reporte de Calidad del Datamart
-Generado: 2026-05-28 00:50:42
+Generado: 2026-05-27 23:05:14
 
 ## dim_tiempo
 - Filas: 6
