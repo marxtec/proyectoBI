@@ -1,0 +1,49 @@
+name: ETL Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/raw/**'
+      - 'etl/**'
+      - 'run_pipeline.py'
+  workflow_dispatch:   # permite ejecución manual desde GitHub
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar pipeline ETL
+        run: python run_pipeline.py
+
+      - name: Ejecutar tests
+        run: pytest tests/ -v
+
+      - name: Subir marts como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: marts-${{ github.run_number }}
+          path: data/marts/
+          retention-days: 30
+
+      - name: Commit de marts actualizados
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add data/marts/ data/processed/
+          git diff --cached --quiet || git commit -m "chore: actualizar marts [$(date +%Y-%m-%d)]"
+          git push

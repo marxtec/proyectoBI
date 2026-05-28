@@ -1,0 +1,37 @@
+# Reporte de Calidad del Datamart
+Generado: 2026-05-28 00:50:42
+
+## dim_tiempo
+- Filas: 6
+- Columnas: ['anio_id', 'anio', 'decada', 'es_ultimo_anio']
+- Nulos: ninguno
+
+## dim_geografica
+- Filas: 2,302
+- Columnas: ['ubigeo', 'departamento', 'provincia', 'distrito', 'region_natural']
+- Nulos: ninguno
+
+## dim_municipio
+- Filas: 1,891
+- Columnas: ['ubigeo', 'tipo_municipalidad', 'clasificacion_mef']
+- Nulos: ninguno
+
+## dim_residuo
+- Filas: 2
+- Columnas: ['residuo_id', 'tipo_residuo', 'descripcion']
+- Nulos: ninguno
+
+## fact_valorizacion
+- Filas: 22,620
+- Columnas: ['id', 'ubigeo', 'anio', 'tipo_residuo', 'pob_total', 'pob_urbana', 'pob_rural', 'qresiduos_mun', 'qresiduos_valorizado', 'tasa_valorizacion_pct']
+- Nulos: ninguno
+
+## fact_generacion
+- Filas: 11,310
+- Columnas: ['id', 'ubigeo', 'anio', 'pob_total_inei', 'pob_urbana_inei', 'pob_rural_inei', 'generacion_per_capita_dom', 'generacion_dom_urbana_tdia', 'generacion_dom_urbana_tanio', 'generacion_mun_tanio', 'generacion_mun_tdia', 'generacion_per_capita_municipal', 'ratio_dom_vs_mun_pct']
+- Nulos: ninguno
+
+## Validaciones cruzadas
+- Ubigeos en fact_valorizacion sin match en dim_geografica: 0
+- Ubigeos en fact_generacion sin match en dim_geografica: 0
+- Rango de años en fact_valorizacion: 2019 – 2024
