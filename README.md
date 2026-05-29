@@ -54,16 +54,71 @@ El modelo dimensional fue construido siguiendo la metodología de Kimball, adopt
 
 ### 3.2 Diagrama del modelo
 
-```
-dim_tiempo ───────────┬──── fact_valorizacion
-dim_geografica ────────┤──── fact_valorizacion
-dim_residuo ───────────┘
+```mermaid
+erDiagram
+    dim_tiempo {
+        int anio_id PK
+        int anio
+        int decada
+        bool es_ultimo_anio
+    }
 
-dim_tiempo ───────────┬──── fact_generacion
-dim_geografica ────────┤──── fact_generacion
-dim_municipio ─────────┘
-```
+    dim_geografica {
+        int ubigeo PK
+        str departamento
+        str provincia
+        str distrito
+        str region_natural
+    }
 
+    dim_municipio {
+        int ubigeo PK
+        str tipo_municipalidad
+        str clasificacion_mef
+    }
+
+    dim_residuo {
+        int residuo_id PK
+        str tipo_residuo
+        str descripcion
+    }
+
+    fact_valorizacion {
+        int id PK
+        int ubigeo FK
+        int anio FK
+        str tipo_residuo FK
+        int pob_total
+        int pob_urbana
+        int pob_rural
+        float qresiduos_mun
+        float qresiduos_valorizado
+        float tasa_valorizacion_pct
+    }
+
+    fact_generacion {
+        int id PK
+        int ubigeo FK
+        int anio FK
+        int pob_total_inei
+        int pob_urbana_inei
+        int pob_rural_inei
+        float generacion_per_capita_dom
+        float generacion_dom_urbana_tdia
+        float generacion_dom_urbana_tanio
+        float generacion_mun_tanio
+        float generacion_mun_tdia
+        float generacion_per_capita_municipal
+        float ratio_dom_vs_mun_pct
+    }
+
+    dim_tiempo ||--o{ fact_valorizacion : "anio"
+    dim_geografica ||--o{ fact_valorizacion : "ubigeo"
+    dim_residuo ||--o{ fact_valorizacion : "tipo_residuo"
+    dim_tiempo ||--o{ fact_generacion : "anio"
+    dim_geografica ||--o{ fact_generacion : "ubigeo"
+    dim_municipio ||--o{ fact_generacion : "ubigeo"
+```
 ### 3.3 Granularidad
 
 | Tabla de hechos | Granularidad |
