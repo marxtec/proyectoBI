@@ -25,6 +25,8 @@ El proceso **ETL** (Extract, Transform, Load) extrae datos de las fuentes origin
 
 **SQL** (Structured Query Language) es el lenguaje estándar para consultar bases de datos relacionales (ISO/IEC 9075, 2016), utilizado para calcular indicadores como tasas de valorización, evolución de generación de residuos y rankings de municipalidades.
 
+**DuckDB** es el motor de base de datos analítica utilizado para almacenar y consultar el datamart. A diferencia de bases de datos tradicionales, no requiere servidor ni configuración adicional, lo que facilita su adopción en entornos con recursos limitados (DuckDB Labs, 2019).
+
 ---
 
 ## 2. Descripción de la empresa
@@ -301,6 +303,8 @@ df = pd.read_parquet("data/marts/fact_valorizacion.parquet")
 ## Fuentes de Datos
 
 Codd, E. F., Codd, S. B., & Salley, C. T. (1993). *Providing OLAP to user-analysts: An IT mandate*. Codd & Date.
+
+DuckDB Labs. (2019). *DuckDB: An embeddable analytical database*. https://duckdb.org
 
 International Organization for Standardization. (2016). *ISO/IEC 9075: Information technology — Database languages — SQL*. ISO.
 
