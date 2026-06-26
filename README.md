@@ -406,7 +406,7 @@ Ambos datasets del SIAF comparten la misma estructura base. El de cambio climát
 ## 7. Estructura del repositorio
 
 ```
-datamart-residuos/
+proyectoBI/
 ├── data/
 │   ├── raw/                              # Archivos originales (CSV / XLSX)
 │   │   ├── generacion_anual_2019_2024.csv
@@ -433,15 +433,26 @@ datamart-residuos/
 │   ├── extract.py             # Carga y normaliza archivos raw (SIGERSOL + MEF/SIAF)
 │   ├── transform.py           # Construye dimensiones y tablas de hechos
 │   └── load.py                # Carga a DuckDB y genera reporte de calidad
-├── reportes/                  # Generado automáticamente al correr el pipeline
-│   └── *.png / *.txt
+├── layouts/
+│   ├── general.py             # Dashboard 1 — Visión general (generación y valorización)
+│   ├── residuos.py            # Dashboard 2 — Análisis de residuos y mapa distrital
+│   └── gasto.py               # Dashboard 3 — Gasto presupuestal MEF/SIAF
+├── queries/
+│   ├── db.py                  # Conexión a DuckDB y CTE geográfica reutilizable
+│   ├── q_general.py           # Queries del Dashboard 1
+│   ├── q_residuos.py          # Queries del Dashboard 2
+│   └── q_gasto.py             # Queries del Dashboard 3
+├── assets/
+│   └── style.css              # Estilos globales (paleta, KPIs, filtros, gráficos)
 ├── tests/
 │   └── test_marts.py          # Pruebas de integridad referencial y calidad
-├── docs/
-│   └── diccionario_datos.md   # Diccionario completo de columnas
 ├── .github/workflows/
 │   └── etl.yml                # CI/CD — ejecuta pipeline en cada push
-├── run_pipeline.py            # Punto de entrada único del pipeline
+├── app.py                     # Punto de entrada del dashboard Dash
+├── run_pipeline.py            # Punto de entrada del pipeline ETL
+├── presentacion.html          # Presentación interactiva del proyecto
+├── Procfile                   # Configuración de arranque para deploy (gunicorn)
+├── render.yaml                # Configuración de deploy en Render
 ├── requirements.txt
 └── .gitignore
 ```
@@ -453,18 +464,30 @@ datamart-residuos/
 pip install -r requirements.txt
 ```
 
-### 8.2 Ejecutar el pipeline completo
+### 8.2 Correr el dashboard localmente
+```bash
+python app.py
+```
+Abre `http://127.0.0.1:8050` en el navegador. El dashboard incluye tres pestañas:
+
+| Pestaña | Contenido |
+|---|---|
+| **General** | KPIs nacionales, evolución de la tasa de valorización, top departamentos, estacionalidad |
+| **Residuos** | Mapa distrital interactivo (Folium), análisis por tipo de residuo y región natural |
+| **Gasto** | Ejecución presupuestal MEF/SIAF por departamento, función, fuente y programa presupuestal |
+
+### 8.3 Ejecutar el pipeline completo
 ```bash
 python run_pipeline.py
 ```
-Esto genera todos los archivos en `data/processed/` y `data/marts/`.
+Esto regenera todos los archivos en `data/processed/` y `data/marts/` a partir de los datos crudos en `data/raw/`.
 
-### 8.3 Correr los tests
+### 8.4 Correr los tests
 ```bash
 pytest tests/ -v
 ```
 
-### 8.4 Consultar el datamart con DuckDB
+### 8.5 Consultar el datamart con DuckDB
 ```python
 import duckdb
 con = duckdb.connect("data/marts/datamart_residuos.duckdb", read_only=True)
