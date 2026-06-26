@@ -11,11 +11,11 @@ Modelo dimensional (constelación de hechos):
   - fact_valorizacion     : hechos de valorización por distrito × año × tipo residuo
   - fact_generacion       : hechos de generación municipal por distrito × año
 
-  MEF/SIAF (condicional, si existen archivos en data/raw/):
+  MEF/SIAF:
   - dim_entidad           : entidad ejecutora del gasto
   - dim_presupuesto       : clasificador presupuestal del gasto
   - dim_programa_funcional: estructura funcional del gasto
-  - dim_cambio_climatico  : medida/atribución climática (solo dataset CC)
+  - dim_cambio_climatico  : medida/atribución climática (registros de cambio climático)
   - fact_gasto            : hechos de ejecución presupuestal por distrito × año
 """
 
