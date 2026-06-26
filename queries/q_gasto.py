@@ -6,6 +6,13 @@ def _q(vals):
     return ", ".join(f"'{v}'" for v in vals)
 
 
+_CALLAO_RAW = 'PROVINCIA CONSTITUCIONAL DEL CALLAO'
+
+
+def _norm_depto(d):
+    return 'CALLAO' if d == _CALLAO_RAW else d
+
+
 def _where(anios=None, niveles=None, deptos=None, funciones=None, programas=None):
     clauses = ["departamento != ' '"]
     if anios:
@@ -13,7 +20,11 @@ def _where(anios=None, niveles=None, deptos=None, funciones=None, programas=None
     if niveles:
         clauses.append(f"nivel_gobierno IN ({_q(niveles)})")
     if deptos:
-        clauses.append(f"departamento IN ({_q(deptos)})")
+        # Expande 'CALLAO' para incluir su nombre largo en fact_gasto
+        expanded = list(deptos)
+        if 'CALLAO' in deptos:
+            expanded.append(_CALLAO_RAW)
+        clauses.append(f"departamento IN ({_q(expanded)})")
     if funciones:
         clauses.append(f"funcion IN ({_q(funciones)})")
     if programas:
@@ -29,9 +40,13 @@ def opciones_gasto():
     niveles = [r[0] for r in con.execute(
         "SELECT DISTINCT nivel_gobierno FROM fact_gasto WHERE nivel_gobierno IS NOT NULL ORDER BY 1"
     ).fetchall()]
-    deptos = [r[0] for r in con.execute(
-        "SELECT DISTINCT departamento FROM fact_gasto WHERE departamento IS NOT NULL AND departamento != ' ' ORDER BY 1"
-    ).fetchall()]
+    # Normaliza Callao y excluye EXTERIOR del dropdown
+    deptos = sorted(set(
+        _norm_depto(r[0]) for r in con.execute(
+            "SELECT DISTINCT departamento FROM fact_gasto "
+            "WHERE departamento IS NOT NULL AND departamento != ' ' AND departamento != 'EXTERIOR' ORDER BY 1"
+        ).fetchall()
+    ))
     funcs = [r[0] for r in con.execute(
         "SELECT DISTINCT funcion FROM fact_gasto WHERE funcion IS NOT NULL ORDER BY 1"
     ).fetchall()]
@@ -74,12 +89,12 @@ def top_deptos(anios=None, niveles=None, deptos=None, funciones=None, programas=
     where = _where(anios, niveles, deptos, funciones, programas)
     con = get_con()
     df = con.execute(f"""
-        SELECT departamento,
+        SELECT CASE WHEN departamento = '{_CALLAO_RAW}' THEN 'CALLAO' ELSE departamento END AS departamento,
                ROUND(SUM(monto_pim)       / 1e9, 3) AS pim,
                ROUND(SUM(monto_devengado) / 1e9, 3) AS devengado,
                ROUND(SUM(monto_devengado) / NULLIF(SUM(monto_pim), 0) * 100, 1) AS tasa_ejec
         FROM fact_gasto {where}
-        GROUP BY departamento
+        GROUP BY 1
         ORDER BY devengado DESC
         LIMIT 15
     """).df()
