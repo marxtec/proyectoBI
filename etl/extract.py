@@ -44,6 +44,30 @@ def load_generacion() -> pd.DataFrame:
     return df
 
 
+def load_gasto_mantenimiento() -> pd.DataFrame | None:
+    """Carga el dataset de gasto en mantenimiento diario del MEF/SIAF."""
+    path = RAW_DIR / "Gasto_Mantenimiento_Diario.csv"
+    if not path.exists():
+        print("  [gasto_mantenimiento] Archivo no encontrado, omitiendo.")
+        return None
+    df = pd.read_csv(path, encoding="latin-1", sep=None, engine="python")
+    df["FUENTE_GASTO"] = "MANTENIMIENTO"
+    print(f"  [gasto_mantenimiento] {len(df)} filas cargadas.")
+    return df
+
+
+def load_gasto_cambio_climatico() -> pd.DataFrame | None:
+    """Carga el dataset de gasto en cambio climático del MEF/SIAF."""
+    path = RAW_DIR / "Gasto_Cambio_Climatico.csv"
+    if not path.exists():
+        print("  [gasto_cambio_climatico] Archivo no encontrado, omitiendo.")
+        return None
+    df = pd.read_csv(path, encoding="latin-1", sep=None, engine="python")
+    df["FUENTE_GASTO"] = "CAMBIO_CLIMATICO"
+    print(f"  [gasto_cambio_climatico] {len(df)} filas cargadas.")
+    return df
+
+
 def run():
     print("=== EXTRACCIÓN ===")
     df_inorg = load_inorganicos()
@@ -53,8 +77,16 @@ def run():
     df_inorg.to_csv(PROCESSED_DIR / "inorganicos_clean.csv", index=False, encoding="utf-8")
     df_org.to_csv(PROCESSED_DIR / "organicos_clean.csv", index=False, encoding="utf-8")
     df_gen.to_csv(PROCESSED_DIR / "generacion_clean.csv", index=False, encoding="utf-8")
+
+    df_mant = load_gasto_mantenimiento()
+    df_cc = load_gasto_cambio_climatico()
+    if df_mant is not None:
+        df_mant.to_csv(PROCESSED_DIR / "gasto_mantenimiento_clean.csv", index=False, encoding="utf-8")
+    if df_cc is not None:
+        df_cc.to_csv(PROCESSED_DIR / "gasto_cambio_climatico_clean.csv", index=False, encoding="utf-8")
+
     print("  Archivos guardados en data/processed/")
-    return df_inorg, df_org, df_gen
+    return df_inorg, df_org, df_gen, df_mant, df_cc
 
 
 if __name__ == "__main__":

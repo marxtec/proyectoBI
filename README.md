@@ -72,6 +72,8 @@ El modelo dimensional fue construido siguiendo la metodología de Kimball, adopt
 
 ```mermaid
 erDiagram
+
+    %% ── DIMENSIONES SIGERSOL ────────────────────────────────
     dim_tiempo {
         int anio_id PK
         int anio
@@ -99,11 +101,12 @@ erDiagram
         str descripcion
     }
 
+    %% ── HECHOS SIGERSOL ─────────────────────────────────────
     fact_valorizacion {
         int id PK
         int ubigeo FK
-        int anio FK
-        str tipo_residuo FK
+        int anio_id FK
+        int residuo_id FK
         int pob_total
         int pob_urbana
         int pob_rural
@@ -115,7 +118,7 @@ erDiagram
     fact_generacion {
         int id PK
         int ubigeo FK
-        int anio FK
+        int anio_id FK
         int pob_total_inei
         int pob_urbana_inei
         int pob_rural_inei
@@ -128,12 +131,69 @@ erDiagram
         float ratio_dom_vs_mun_pct
     }
 
-    dim_tiempo ||--o{ fact_valorizacion : "anio"
-    dim_geografica ||--o{ fact_valorizacion : "ubigeo"
-    dim_residuo ||--o{ fact_valorizacion : "tipo_residuo"
-    dim_tiempo ||--o{ fact_generacion : "anio"
-    dim_geografica ||--o{ fact_generacion : "ubigeo"
-    dim_municipio ||--o{ fact_generacion : "ubigeo"
+    %% ── DIMENSIONES MEF/SIAF ────────────────────────────────
+    dim_entidad {
+        int entidad_id PK
+        str nivel_gobierno
+        str sector_nombre
+        str pliego_nombre
+        str ejecutora_nombre
+    }
+
+    dim_presupuesto {
+        int presupuesto_id PK
+        str fuente_financiamiento
+        str rubro
+        str generica
+        str subgenerica
+        str especifica
+    }
+
+    dim_programa_funcional {
+        int programa_id PK
+        str programa_ppto_nombre
+        str funcion_nombre
+        str division_funcional_nombre
+        str grupo_funcional_nombre
+        str actividad_nombre
+    }
+
+    dim_cambio_climatico {
+        int cc_id PK
+        str medida
+        str atribucion
+    }
+
+    %% ── HECHO MEF/SIAF ──────────────────────────────────────
+    fact_gasto {
+        int id PK
+        int ubigeo FK
+        int anio_id FK
+        int entidad_id FK
+        int presupuesto_id FK
+        int programa_id FK
+        int cc_id FK
+        float monto_pia
+        float monto_pim
+        float monto_devengado
+        float monto_girado
+    }
+
+    %% ── RELACIONES ──────────────────────────────────────────
+    dim_tiempo           ||--o{ fact_valorizacion : "anio_id"
+    dim_geografica       ||--o{ fact_valorizacion : "ubigeo"
+    dim_residuo          ||--o{ fact_valorizacion : "residuo_id"
+
+    dim_tiempo           ||--o{ fact_generacion : "anio_id"
+    dim_geografica       ||--o{ fact_generacion : "ubigeo"
+    dim_municipio        ||--o{ fact_generacion : "ubigeo"
+
+    dim_tiempo           ||--o{ fact_gasto : "anio_id"
+    dim_geografica       ||--o{ fact_gasto : "ubigeo"
+    dim_entidad          ||--o{ fact_gasto : "entidad_id"
+    dim_presupuesto      ||--o{ fact_gasto : "presupuesto_id"
+    dim_programa_funcional ||--o{ fact_gasto : "programa_id"
+    dim_cambio_climatico ||--o{ fact_gasto : "cc_id"
 ```
 ### 3.3 Granularidad
 
@@ -153,6 +213,8 @@ Permite analizar la evolución temporal de los indicadores entre 2019 y 2024.
 | `anio` | int | Año del período (2019–2024) |
 | `decada` | int | Década correspondiente |
 | `es_ultimo_anio` | bool | True si es el año más reciente del dataset |
+
+> **Limitación:** La granularidad mínima es anual porque SIGERSOL recopila reportes una vez al año, por obligación legal establecida en el Decreto Legislativo N° 1278. No existe información mensual disponible públicamente.
 
 #### `dim_geografica`
 Provee el contexto territorial de cada registro, desde el nivel distrital hasta la región natural.
@@ -224,38 +286,131 @@ Registra la generación de residuos domiciliarios y municipales a nivel distrita
 
 ---
 
+## 4. Fuentes de datos presupuestales (MEF/SIAF)
+
+El modelo se amplía con dos datasets de ejecución presupuestal del Sistema Integrado de Administración Financiera (SIAF) del Ministerio de Economía y Finanzas (MEF), que permiten cruzar el desempeño en gestión de residuos con la inversión pública ejecutada a nivel distrital.
+
+| Dataset | Archivo esperado en `data/raw/` | Descripción |
+|---|---|---|
+| Gasto en Mantenimiento Diario | `Gasto_Mantenimiento_Diario.csv` | Ejecución presupuestal de actividades de mantenimiento por entidad, período y clasificador de gasto |
+| Gasto en Cambio Climático | `Gasto_Cambio_Climatico.csv` | Ejecución presupuestal etiquetada como gasto climático, con clasificación de medida (Adaptación / Mitigación) |
+
+Ambos datasets comparten la misma estructura base (fuente: SIAF). El de cambio climático añade los campos `MEDIDA` y `ATRIBUCION`, que dan origen a `dim_cambio_climatico`.
+
+### 4.1 Nuevas dimensiones (MEF/SIAF)
+
+#### `dim_entidad`
+Describe la entidad ejecutora del gasto público.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `entidad_id` | int | PK surrogate |
+| `nivel_gobierno` | str | Nacional / Regional / Local |
+| `sector_nombre` | str | Sector del Estado al que pertenece |
+| `pliego_nombre` | str | Unidad ejecutora de primer nivel |
+| `ejecutora_nombre` | str | Entidad que efectúa el gasto |
+
+#### `dim_presupuesto`
+Describe la clasificación del gasto según el clasificador presupuestal del MEF.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `presupuesto_id` | int | PK surrogate |
+| `fuente_financiamiento` | str | Fuente de financiamiento (canon, recursos ordinarios, etc.) |
+| `rubro` | str | Rubro presupuestal |
+| `generica` | str | Mayor nivel de agregación del clasificador de gasto |
+| `subgenerica` | str | Nivel intermedio del clasificador |
+| `especifica` | str | Detalle específico del gasto |
+
+#### `dim_programa_funcional`
+Describe la estructura funcional del gasto: qué se hace y para qué.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `programa_id` | int | PK surrogate |
+| `programa_ppto_nombre` | str | Programa presupuestal (ej. PP 0036 — Gestión Integral de Residuos Sólidos) |
+| `funcion_nombre` | str | Función (nivel máximo de agregación funcional) |
+| `division_funcional_nombre` | str | División funcional |
+| `grupo_funcional_nombre` | str | Grupo funcional |
+| `actividad_nombre` | str | Actividad o acción de inversión específica |
+
+#### `dim_cambio_climatico`
+Clasifica el tipo de respuesta climática del gasto. Solo aplica a registros del dataset de Cambio Climático; los registros de Mantenimiento dejan el FK `cc_id` en NULL en `fact_gasto`.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `cc_id` | int | PK |
+| `medida` | str | Adaptación / Mitigación / Ambos |
+| `atribucion` | str | Tipo de efecto climático asociado |
+
+### 4.2 Nueva tabla de hechos: `fact_gasto`
+
+Registra la ejecución presupuestal anual a nivel distrital, agregando los montos mensuales del SIAF al año de ejecución para mantener consistencia con la granularidad de SIGERSOL.
+
+**Granularidad:** Un registro por distrito × año × entidad × clasificador presupuestal × programa funcional × (medida climática si aplica).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | int | PK surrogate |
+| `ubigeo` | int | FK → dim_geografica (dimensión conformada) |
+| `anio_id` | int | FK → dim_tiempo |
+| `entidad_id` | int | FK → dim_entidad |
+| `presupuesto_id` | int | FK → dim_presupuesto |
+| `programa_id` | int | FK → dim_programa_funcional |
+| `cc_id` | int | FK → dim_cambio_climatico (nullable) |
+| `monto_pia` | float | Presupuesto Institucional de Apertura (S/) |
+| `monto_pim` | float | Presupuesto Institucional Modificado (S/) |
+| `monto_devengado` | float | Monto efectivamente devengado (S/) |
+| `monto_girado` | float | Monto girado / pagado (S/) |
+
+> **Nota:** `dim_geografica` actúa como **dimensión conformada** — es la misma tabla compartida por las tres facts (`fact_valorizacion`, `fact_generacion` y `fact_gasto`), lo que permite análisis cruzados entre gasto e indicadores de residuos a nivel distrital.
+
+---
+
+## 5. Limitaciones conocidas
+
+| Limitación | Descripción |
+|---|---|
+| **Granularidad anual (SIGERSOL)** | SIGERSOL recopila reportes una vez al año por obligación legal (DL 1278). No existe información mensual disponible públicamente. |
+| **Agregación anual del gasto** | Los datos del MEF/SIAF tienen granularidad mensual (`MES_EJE`), pero se agregan a nivel anual en el ETL para mantener consistencia con SIGERSOL. Se pierde la capacidad de análisis intra-anual del gasto. |
+| **Cobertura temporal del gasto** | `fact_gasto` se filtra al período 2019–2024 para alinearse con SIGERSOL, aunque el SIAF dispone de datos desde 2014. |
+| **Join geográfico por nombre** | La vinculación del gasto con `dim_geografica` se realiza por normalización de nombres (departamento/provincia/distrito), no por código directo. Discrepancias en abreviaturas o grafías entre MEF y SIGERSOL pueden generar registros sin ubigeo asignado (`ubigeo IS NULL`). El reporte de calidad cuantifica estos casos. |
+| **Cobertura de municipalidades** | Solo el 44% de las municipalidades actualizó SIGERSOL en 2022 (826 de 1,874), lo que limita la representatividad del análisis a nivel distrital. |
+| **Datos de gasto opcionales** | Las tablas MEF/SIAF solo se generan si los archivos `Gasto_Mantenimiento_Diario.csv` y `Gasto_Cambio_Climatico.csv` están presentes en `data/raw/`. El pipeline funciona sin ellos. |
+
+---
+
 ## 7. Estructura del repositorio
 
 ```
 datamart-residuos/
 ├── data/
-│   ├── raw/                   # Archivos originales (CSV / XLSX)
-│   ├── processed/             # Datos limpios intermedios (generado por ETL)
-│   └── marts/                 # Tablas finales (Parquet + DuckDB)
+│   ├── raw/                              # Archivos originales (CSV / XLSX)
+│   │   ├── generacion_anual_2019_2024.csv
+│   │   ├── inorganicos_2019_2024.csv
+│   │   ├── organicos_2019_2024.xlsx
+│   │   ├── Gasto_Mantenimiento_Diario.csv         # opcional — MEF/SIAF
+│   │   └── Gasto_Cambio_Climatico.csv             # opcional — MEF/SIAF
+│   ├── processed/                        # Datos limpios intermedios (generado por ETL)
+│   └── marts/                            # Tablas finales (Parquet + DuckDB)
 │       ├── dim_tiempo.parquet
 │       ├── dim_geografica.parquet
 │       ├── dim_municipio.parquet
 │       ├── dim_residuo.parquet
 │       ├── fact_valorizacion.parquet
 │       ├── fact_generacion.parquet
+│       ├── dim_entidad.parquet            # generado si existen datos de gasto
+│       ├── dim_presupuesto.parquet        # generado si existen datos de gasto
+│       ├── dim_programa_funcional.parquet # generado si existen datos de gasto
+│       ├── dim_cambio_climatico.parquet   # generado si existe dataset CC
+│       ├── fact_gasto.parquet             # generado si existen datos de gasto
 │       └── datamart_residuos.duckdb
 ├── etl/
-│   ├── extract.py             # Carga y normaliza archivos raw
+│   ├── extract.py             # Carga y normaliza archivos raw (SIGERSOL + MEF/SIAF)
 │   ├── transform.py           # Construye dimensiones y tablas de hechos
 │   └── load.py                # Carga a DuckDB y genera reporte de calidad
-├── reportes/                       # Generado automáticamente al correr el pipeline
-│   ├── 01_evolucion_nacional.png
-│   ├── 01_evolucion_toneladas.png
-│   ├── 02_top10_organico.png
-│   ├── 02_top10_inorganico.png
-│   ├── 03_region_natural.png
-│   ├── 04_ranking_departamentos.png
-│   ├── 05_mejora_organico.png
-│   ├── 05_mejora_inorganico.png
-│   ├── 06_per_capita.png
-│   ├── 07_sin_valorizacion.png
-│   ├── 08_tipo_municipalidad.png
-│   └── *.txt                       # Versión en texto de cada reporte
+├── reportes/                  # Generado automáticamente al correr el pipeline
+│   └── *.png / *.txt
 ├── tests/
 │   └── test_marts.py          # Pruebas de integridad referencial y calidad
 ├── docs/
