@@ -33,7 +33,7 @@ def _opts(vals):
 
 
 def layout():
-    anios, niveles, deptos, funcs = opciones_gasto()
+    anios, niveles, deptos, funcs, progs = opciones_gasto()
 
     filtros = html.Div(className="filtros-bar", children=[
         html.Div([
@@ -55,6 +55,13 @@ def layout():
             html.Div("Función", className="filtro-label"),
             dcc.Dropdown(id="gas-funciones", options=_opts(funcs),
                          multi=True, placeholder="Todas", style={"minWidth": "220px"}),
+        ]),
+        html.Div([
+            html.Div("Programa presupuestal", className="filtro-label"),
+            dcc.Dropdown(id="gas-programas", options=_opts(progs),
+                         multi=True, placeholder="Todos",
+                         style={"minWidth": "260px"},
+                         optionHeight=50),
         ]),
     ])
 
@@ -119,12 +126,14 @@ def layout():
 # ── Callbacks ─────────────────────────────────────────────────────────────────
 
 @callback(Output("gas-kpis", "children"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def update_kpis(anios, niveles, deptos, funciones):
-    d = kpi_gasto(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def update_kpis(anios, niveles, deptos, funciones, programas):
+    d = kpi_gasto(anios or None, niveles or None, deptos or None,
+                  funciones or None, programas or None)
     return [
         html.Div(className="kpi-card", children=[
             html.Div(f"S/ {d['pim']:,.2f} MM", className="kpi-valor"),
@@ -132,22 +141,24 @@ def update_kpis(anios, niveles, deptos, funciones):
         ]),
         html.Div(className="kpi-card acento-naranja", children=[
             html.Div(f"S/ {d['devengado']:,.2f} MM", className="kpi-valor"),
-            html.Div("Total devengado", className="kpi-etiqueta"),
+            html.Div("Total devengado MEF", className="kpi-etiqueta"),
         ]),
         html.Div(className="kpi-card acento-marron", children=[
             html.Div(f"{d['tasa']:.1f}%", className="kpi-valor"),
-            html.Div("Tasa de ejecución", className="kpi-etiqueta"),
+            html.Div("Tasa de ejecución presupuestal", className="kpi-etiqueta"),
         ]),
     ]
 
 
 @callback(Output("gas-g1", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g1_evolucion(anios, niveles, deptos, funciones):
-    df = evolucion_anual(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g1_evolucion(anios, niveles, deptos, funciones, programas):
+    df = evolucion_anual(anios or None, niveles or None, deptos or None,
+                         funciones or None, programas or None)
     fig = go.Figure()
     fig.add_trace(go.Bar(
         name="PIM", x=df["anio"], y=df["pim"],
@@ -169,12 +180,14 @@ def g1_evolucion(anios, niveles, deptos, funciones):
 
 
 @callback(Output("gas-g2", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g2_deptos(anios, niveles, deptos, funciones):
-    df = top_deptos(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g2_deptos(anios, niveles, deptos, funciones, programas):
+    df = top_deptos(anios or None, niveles or None, deptos or None,
+                    funciones or None, programas or None)
     df = df.sort_values("devengado")
     fig = go.Figure(go.Bar(
         x=df["devengado"], y=df["departamento"], orientation="h",
@@ -189,11 +202,13 @@ def g2_deptos(anios, niveles, deptos, funciones):
 
 
 @callback(Output("gas-g3", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g3_nivel(anios, deptos, funciones):
-    df = gasto_por_nivel(anios or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g3_nivel(anios, deptos, funciones, programas):
+    df = gasto_por_nivel(anios or None, deptos or None,
+                         funciones or None, programas or None)
     fig = go.Figure()
     fig.add_trace(go.Bar(
         name="PIM", x=df["nivel_gobierno"], y=df["pim"],
@@ -211,12 +226,14 @@ def g3_nivel(anios, deptos, funciones):
 
 
 @callback(Output("gas-g4", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g4_fuente(anios, niveles, deptos, funciones):
-    df = gasto_por_fuente(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g4_fuente(anios, niveles, deptos, funciones, programas):
+    df = gasto_por_fuente(anios or None, niveles or None, deptos or None,
+                          funciones or None, programas or None)
     colores = [C["bambu"], C["naranja"], C["musgo"], C["mostaza"], C["marron"]]
     fig = go.Figure(go.Pie(
         labels=df["fuente_financiamiento"],
@@ -226,18 +243,19 @@ def g4_fuente(anios, niveles, deptos, funciones):
         hovertemplate="<b>%{label}</b><br>S/ %{value:.2f} MM<br>%{percent}<extra></extra>",
         hole=0.35,
     ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=380,
-                      showlegend=False)
+    fig.update_layout(**PLOTLY_LAYOUT, height=380, showlegend=False)
     return fig
 
 
 @callback(Output("gas-g5", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g5_tasa_depto(anios, niveles, deptos, funciones):
-    df = top_deptos(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g5_tasa_depto(anios, niveles, deptos, funciones, programas):
+    df = top_deptos(anios or None, niveles or None, deptos or None,
+                    funciones or None, programas or None)
     df = df.sort_values("tasa_ejec")
 
     def color_tasa(v):
@@ -261,12 +279,14 @@ def g5_tasa_depto(anios, niveles, deptos, funciones):
 
 
 @callback(Output("gas-g6", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g6_funcion(anios, niveles, deptos, funciones):
-    df = gasto_por_funcion(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g6_funcion(anios, niveles, deptos, funciones, programas):
+    df = gasto_por_funcion(anios or None, niveles or None, deptos or None,
+                           funciones or None, programas or None)
     df = df.sort_values("devengado")
     fig = go.Figure(go.Bar(
         x=df["devengado"], y=df["funcion"], orientation="h",
@@ -281,12 +301,14 @@ def g6_funcion(anios, niveles, deptos, funciones):
 
 
 @callback(Output("gas-g7", "figure"),
-          Input("gas-anios",    "value"),
-          Input("gas-niveles",  "value"),
-          Input("gas-deptos",   "value"),
-          Input("gas-funciones","value"))
-def g7_heatmap(anios, niveles, deptos, funciones):
-    df = heatmap_mensual(anios or None, niveles or None, deptos or None, funciones or None)
+          Input("gas-anios",     "value"),
+          Input("gas-niveles",   "value"),
+          Input("gas-deptos",    "value"),
+          Input("gas-funciones", "value"),
+          Input("gas-programas", "value"))
+def g7_heatmap(anios, niveles, deptos, funciones, programas):
+    df = heatmap_mensual(anios or None, niveles or None, deptos or None,
+                         funciones or None, programas or None)
     pivot = df.pivot(index="anio", columns="mes", values="devengado_mill").fillna(0)
     pivot.columns = [MESES[c - 1] for c in pivot.columns]
     fig = go.Figure(go.Heatmap(
